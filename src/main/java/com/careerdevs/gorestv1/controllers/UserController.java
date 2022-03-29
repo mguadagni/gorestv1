@@ -1,12 +1,15 @@
 package com.careerdevs.gorestv1.controllers;
 
 import com.careerdevs.gorestv1.models.UserModel;
+import com.careerdevs.gorestv1.models.UserModelArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Objects;
 
 @RestController
 @RequestMapping ("/api/user")
@@ -21,6 +24,40 @@ public class UserController {
         return env.getProperty("GOREST_TOKEN");
     }
 
+    //(URL / endpoint) GET http://localhost:4444/api/user/page
+    @GetMapping ("/page/{pageNum}")
+    public Object getPage (
+            RestTemplate restTemplate,
+            @PathVariable ("pageNum") String pageNumber
+    ) {
+
+        try {
+
+            String url = "https://gorest.co.in/public/v2/users?page=" + pageNumber;
+
+            ResponseEntity<UserModel[]> response = restTemplate.getForEntity(url, UserModel[].class);
+
+            UserModel[] firstPageUsers = response.getBody();
+
+            HttpHeaders responseHeaders = response.getHeaders();
+
+            String totalPages = Objects.requireNonNull(responseHeaders.get("X-Pagination-Pages")).get(0);
+
+//            System.out.println("Total Pages: " + totalPages);
+
+            return new ResponseEntity<>(firstPageUsers, HttpStatus.OK);
+
+        } catch (Exception e){
+
+            System.out.println(e.getClass());
+            System.out.println(e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+
+        }
+
+    }
+
+    //(URL / endpoint) GET http://localhost:4444/api/user/{id}
     @GetMapping ("/{id}")
     public Object getOneUser (
             @PathVariable ("id") String userId,
@@ -32,11 +69,21 @@ public class UserController {
             String apiToken = env.getProperty("GOREST_TOKEN");
             url += "?access-token=" + apiToken;
 
-            return restTemplate.getForObject(url, Object.class);
+            var user = restTemplate.getForObject(url, UserModel.class);
+
+            assert user != null;
+            System.out.println("Report: \n" + user.generateReport());
+
+            return user;
+
+        } catch (HttpClientErrorException.NotFound exception) {
+
+            return "User could not be found, user #" +userId + " does not exist";
 
         } catch (Exception exception){
 
-            return "404: No user exists with the ID " + userId;
+            System.out.println(exception.getClass());
+            return exception.getMessage();
 
         }
 
@@ -52,23 +99,26 @@ public class UserController {
 
             String url = "https://gorest.co.in/public/v2/users/" + userId;
             String token = env.getProperty("GOREST_TOKEN");
-            HttpHeaders headers = new HttpHeaders();
 
-            headers.setBearerAuth(token);
+            url += "?access-token=" + token;
 
-            HttpEntity request = new HttpEntity(headers);
-
-            restTemplate.exchange(
-                    url,
-                    HttpMethod.DELETE,
-                    request,
-                    Object.class
-            );
+            restTemplate.delete(url);
 
             return "Successfully deleted user # " + userId;
 
+        } catch (HttpClientErrorException.NotFound exception) {
+
+            return "User could not be deleted, user #" + userId + " does not exist";
+
+        } catch (HttpClientErrorException.Unauthorized exception) {
+
+            return "You are not authorized to delete user #" + userId;
+
         } catch (Exception exception){
+
+            System.out.println(exception.getClass());
             return exception.getMessage();
+
         }
 
     }

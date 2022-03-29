@@ -39,6 +39,10 @@ public class UserModel {
         return status;
     }
 
+    public String generateReport() {
+        return name + " is currently " + status + ". You can contact them at: " + email;
+    }
+
     @Override
     public String toString() {
         return "UserModel{" +
