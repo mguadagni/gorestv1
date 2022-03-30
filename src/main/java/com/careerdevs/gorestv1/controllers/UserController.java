@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 @RestController
@@ -88,6 +90,41 @@ public class UserController {
         }
 
     }
+
+    @GetMapping("/all")
+        public ResponseEntity getAll(RestTemplate restTemplate) {
+
+            try {
+
+                ArrayList<UserModel> allUsers = new ArrayList<>();
+
+                String url = "https://gorest.co.in/public/v2/users";
+
+                ResponseEntity<UserModel[]> response = restTemplate.getForEntity(url, UserModel[].class);
+
+                allUsers.addAll(Arrays.asList(Objects.requireNonNull(response.getBody())));
+
+                int totalPageNumber = Integer.parseInt(response.getHeaders().get("X-Pagination-Pages").get(0));
+
+                for (int i = 2; i <= totalPageNumber; i++) {
+                    String tempUrl = url + "?page=" + i;
+
+                    UserModel[] pageData = restTemplate.getForObject(tempUrl, UserModel[].class);
+                    allUsers.addAll(Arrays.asList(Objects.requireNonNull(pageData)));
+                }
+
+                return new ResponseEntity(allUsers, HttpStatus.OK);
+
+            } catch (Exception e) {
+
+                System.out.println(e.getClass());
+                System.out.println(e.getMessage());
+
+                return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+
+            }
+        }
+
 
     @DeleteMapping ("/{id}")
     public Object deleteOneUser (
