@@ -191,8 +191,8 @@ public class UserController {
 
     }
 
-    @PostMapping ("/")
-    public ResponseEntity postUser (
+    @PostMapping
+    public ResponseEntity<Object> postUser (
             RestTemplate restTemplate,
             @RequestBody UserModel newUser
     ) {
@@ -204,7 +204,9 @@ public class UserController {
 
             HttpEntity<UserModel> request = new HttpEntity<>(newUser);
 
-            return restTemplate.postForEntity(url, request, UserModel.class);
+            UserModel createdUser = restTemplate.postForObject(url, request, UserModel.class);
+
+            return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
 
         } catch (Exception e) {
             System.out.println(e.getClass() + " \n " + e.getMessage());
