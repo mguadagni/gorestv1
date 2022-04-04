@@ -91,7 +91,7 @@ public class PostController {
 
             return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
 
-        } catch (Exception e){
+        } catch (Exception e) {
 
             System.out.println(e.getClass());
             System.out.println(e.getMessage());
