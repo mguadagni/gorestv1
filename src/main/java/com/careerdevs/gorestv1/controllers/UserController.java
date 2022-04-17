@@ -2,6 +2,7 @@ package com.careerdevs.gorestv1.controllers;
 
 import com.careerdevs.gorestv1.models.UserModel;
 import com.careerdevs.gorestv1.models.UserModelArray;
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.*;
@@ -92,35 +93,44 @@ public class UserController {
     }
 
     @GetMapping("/all")
-        public ResponseEntity getAll(RestTemplate restTemplate) {
+        public ResponseEntity<?> getAll(
+                RestTemplate restTemplate
+    ) {
 
             try {
-
-                ArrayList<UserModel> allUsers = new ArrayList<>();
 
                 String url = "https://gorest.co.in/public/v2/users";
 
                 ResponseEntity<UserModel[]> response = restTemplate.getForEntity(url, UserModel[].class);
 
-                allUsers.addAll(Arrays.asList(Objects.requireNonNull(response.getBody())));
+                UserModel[] firstPageUsers = response.getBody();
 
-                int totalPageNumber = Integer.parseInt(response.getHeaders().get("X-Pagination-Pages").get(0));
+                assert firstPageUsers != null;
+                ArrayList<UserModel> allUsers = new ArrayList<>(Arrays.asList(firstPageUsers));
 
-                for (int i = 2; i <= totalPageNumber; i++) {
-                    String tempUrl = url + "?page=" + i;
+                HttpHeaders responseHeaders = response.getHeaders();
 
-                    UserModel[] pageData = restTemplate.getForObject(tempUrl, UserModel[].class);
-                    allUsers.addAll(Arrays.asList(Objects.requireNonNull(pageData)));
+                String totalPages = Objects.requireNonNull(responseHeaders.get("X-Pagination-Pages")).get(0);
+                int totalPgNum = Integer.parseInt(totalPages);
+
+                for (int i = 2; i <= totalPgNum; i++) {
+
+                    String pageUrl = url + "?page=" + i;
+                    UserModel[] pageUsers = restTemplate.getForObject(pageUrl, UserModel[].class);
+
+                    assert pageUsers != null;
+                    allUsers.addAll(Arrays.asList(firstPageUsers));
+
                 }
 
-                return new ResponseEntity(allUsers, HttpStatus.OK);
+                return new ResponseEntity<>(allUsers, HttpStatus.OK);
 
             } catch (Exception e) {
 
                 System.out.println(e.getClass());
                 System.out.println(e.getMessage());
 
-                return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 
             }
         }
